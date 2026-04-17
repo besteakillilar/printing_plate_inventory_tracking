@@ -164,6 +164,16 @@
                                 <div class="icon-box icon-blue"><i class='bx bx-layer-plus'></i></div>
                             </div>
                         </div>
+                        <div class="card card-purple card-clickable" data-filter="clean">
+                            <div class="card-stripe"></div>
+                            <div class="card-body">
+                                <div class="card-info">
+                                    <p class="label">Baskısız Temiz</p>
+                                    <div class="value" id="stat-clean">0</div>
+                                </div>
+                                <div class="icon-box icon-purple"><i class='bx bx-check-circle'></i></div>
+                            </div>
+                        </div>
                     </div>
                     <div class="dashboard-grid">
                         <div class="widget-card">
@@ -206,6 +216,14 @@
                                         <div class="dist-bar dist-bar-coating"></div>
                                     </div>
                                     <span class="dist-value" id="dist-coating">0</span>
+                                </div>
+                                <div class="dist-item">
+                                    <div class="dist-label"><span class="dist-dot"
+                                            style="background:#9333ea;"></span>Baskısız Temiz</div>
+                                    <div class="dist-bar-wrap">
+                                        <div class="dist-bar dist-bar-clean"></div>
+                                    </div>
+                                    <span class="dist-value" id="dist-clean">0</span>
                                 </div>
                             </div>
                         </div>
@@ -276,6 +294,7 @@
                 <!-- Plate List -->
                 <section id="plate-list" class="view-section">
                     <div id="type-summary-cards" class="type-summary-grid"></div>
+                    <div id="status-summary-cards" class="status-summary-grid"></div>
                     <div class="view-header">
                         <h1>Kalıp Envanteri</h1>
                     </div>
@@ -309,9 +328,10 @@
                                     <th style="width:12%;">Kalıp Türü</th>
                                     <th style="width:8%;">İnç</th>
                                     <th style="width:12%;">Kalıp Ölçüsü</th>
-                                    <th style="text-align:center; width:10%;">Stokta</th>
-                                    <th style="text-align:center; width:10%;">Yıkamada</th>
-                                    <th style="text-align:center; width:10%;">Kaplamada</th>
+                                    <th style="text-align:center; width:8%;">Stokta</th>
+                                    <th style="text-align:center; width:8%;">Yıkamada</th>
+                                    <th style="text-align:center; width:8%;">Kaplamada</th>
+                                    <th style="text-align:center; width:8%;">Temiz</th>
                                     <th style="text-align:center;">İşlemler</th>
                                 </tr>
                             </thead>
@@ -381,6 +401,16 @@
                                     <div class="form-group"><label>Balon İnç</label><select id="edit-plate-inch" required></select></div>
                                     <div class="form-group"><label>Kalıp Ölçüsü (cm)</label><select id="edit-plate-size" required></select></div>
                                     <div class="form-group"><label>Toplam Adet</label><input type="number" id="edit-plate-count" min="1" required></div>
+                                </div>
+                                <div class="edit-counts-section">
+                                    <span class="edit-counts-label">Stok Dağılımı</span>
+                                    <div class="edit-counts-grid">
+                                        <div class="form-group"><label>Stokta</label><input type="number" id="edit-plate-stock" min="0" value="0"></div>
+                                        <div class="form-group"><label>Yıkamada</label><input type="number" id="edit-plate-washing" min="0" value="0"></div>
+                                        <div class="form-group"><label>Kaplamada</label><input type="number" id="edit-plate-coating" min="0" value="0"></div>
+                                        <div class="form-group"><label>Baskısız Temiz</label><input type="number" id="edit-plate-clean" min="0" value="0"></div>
+                                    </div>
+                                    <p class="edit-counts-hint" id="edit-counts-hint"></p>
                                 </div>
                                 <button type="submit" class="btn btn-primary w-100" style="margin-top:10px;">Güncelle</button>
                             </div>

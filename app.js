@@ -272,6 +272,27 @@ function setupEventListeners() {
         });
     });
 
+    // Movement modal
+    const stepperMinus = document.getElementById('stepper-minus');
+    const stepperPlus = document.getElementById('stepper-plus');
+    const movementCountInput = document.getElementById('movement-count');
+    const movementConfirmBtn = document.getElementById('movement-confirm-btn');
+    const movementCancelBtn = document.getElementById('movement-cancel-btn');
+    const movementModal = document.getElementById('movement-modal');
+
+    if (stepperMinus) stepperMinus.addEventListener('click', () => {
+        const v = parseInt(movementCountInput.value) || 1;
+        if (v > 1) movementCountInput.value = v - 1;
+    });
+    if (stepperPlus) stepperPlus.addEventListener('click', () => {
+        const v = parseInt(movementCountInput.value) || 1;
+        const mx = parseInt(movementCountInput.max) || 9999;
+        if (v < mx) movementCountInput.value = v + 1;
+    });
+    if (movementConfirmBtn) movementConfirmBtn.addEventListener('click', confirmMovement);
+    if (movementCancelBtn) movementCancelBtn.addEventListener('click', () => { if (movementModal) movementModal.classList.remove('active'); });
+    if (movementModal) movementModal.addEventListener('click', (e) => { if (e.target === movementModal) movementModal.classList.remove('active'); });
+
     // Dashboard filter modal close on backdrop
     const dfmModal = document.getElementById('dashboard-filter-modal');
     if (dfmModal) {
@@ -368,7 +389,7 @@ function switchView(targetId) {
 
     // Re-render specifics if needed
     if (targetId === 'dashboard') renderDashboard();
-    if (targetId === 'plate-list') { renderPlates(); renderTypeSummaryCards(); }
+    if (targetId === 'plate-list') { renderPlates(); renderTypeSummaryCards(); renderStatusSummaryCards(); }
     if (targetId === 'user-management') renderUsers();
 }
 
@@ -413,9 +434,10 @@ async function handleAddPlate(e) {
         inch: document.getElementById('plate-inch').value,
         size: document.getElementById('plate-size').value,
         totalCount: parseInt(document.getElementById('plate-count').value),
-        stockCount: parseInt(document.getElementById('plate-count').value), // Başlangıçta hepsi stokta
+        stockCount: parseInt(document.getElementById('plate-count').value),
         washingCount: 0,
         coatingCount: 0,
+        cleanCount: 0,
         dateAdded: nowFormatted()
     };
 
@@ -461,6 +483,23 @@ window.editPlate = function (plateId) {
         document.getElementById('edit-plate-size').value = plate.size;
         document.getElementById('edit-plate-count').value = plate.totalCount;
 
+        const stockInput   = document.getElementById('edit-plate-stock');
+        const washingInput = document.getElementById('edit-plate-washing');
+        const coatingInput = document.getElementById('edit-plate-coating');
+        const cleanInput   = document.getElementById('edit-plate-clean');
+        const hintEl       = document.getElementById('edit-counts-hint');
+        if (stockInput)   stockInput.value   = plate.stockCount || 0;
+        if (washingInput) washingInput.value = plate.washingCount || 0;
+        if (coatingInput) coatingInput.value = plate.coatingCount || 0;
+        if (cleanInput)   cleanInput.value   = plate.cleanCount || 0;
+        if (hintEl) hintEl.textContent = `Toplam: ${plate.totalCount} adet`;
+
+        const updateHint = () => {
+            const s = parseInt(stockInput?.value||0) + parseInt(washingInput?.value||0) + parseInt(coatingInput?.value||0) + parseInt(cleanInput?.value||0);
+            if (hintEl) hintEl.textContent = `Dağılım: ${s} / ${parseInt(document.getElementById('edit-plate-count').value)||0} adet`;
+        };
+        [stockInput, washingInput, coatingInput, cleanInput].forEach(el => { if (el) el.addEventListener('input', updateHint); });
+
         // File input'u sıfırla — aksi hâlde tarayıcı change event'ini ikinci açılışta tetiklemiyor
         const fileInput = document.getElementById('edit-plate-image-file');
         if (fileInput) fileInput.value = '';
@@ -488,9 +527,22 @@ async function handleEditPlateForm(e) {
     plate.size = document.getElementById('edit-plate-size').value;
     const newCount = parseInt(document.getElementById('edit-plate-count').value);
 
-    const diff = newCount - plate.totalCount;
-    plate.totalCount = newCount;
-    plate.stockCount = Math.max(0, plate.stockCount + diff);
+    const newStock   = parseInt(document.getElementById('edit-plate-stock')?.value   || plate.stockCount);
+    const newWashing = parseInt(document.getElementById('edit-plate-washing')?.value || plate.washingCount);
+    const newCoating = parseInt(document.getElementById('edit-plate-coating')?.value || plate.coatingCount);
+    const newClean   = parseInt(document.getElementById('edit-plate-clean')?.value   || (plate.cleanCount || 0));
+    const distSum = newStock + newWashing + newCoating + newClean;
+
+    if (distSum > newCount) {
+        showToast(`Dağılım toplamı (${distSum}) toplam adetten (${newCount}) fazla olamaz!`, 'warning');
+        return;
+    }
+
+    plate.totalCount  = newCount;
+    plate.stockCount  = newStock;
+    plate.washingCount = newWashing;
+    plate.coatingCount = newCoating;
+    plate.cleanCount   = newClean;
 
     const changes = [];
     if (plate.name !== oldName) changes.push(`Ad: "${oldName}" → "${plate.name}"`);
@@ -524,6 +576,7 @@ function renderAll() {
     renderDashboard();
     renderPlates();
     renderTypeSummaryCards();
+    renderStatusSummaryCards();
 }
 
 function renderTypeSummaryCards() {
@@ -532,20 +585,22 @@ function renderTypeSummaryCards() {
 
     const typeMap = {};
     appState.plates.forEach(p => {
-        if (!typeMap[p.type]) typeMap[p.type] = { stock: 0, washing: 0, coating: 0 };
+        if (!typeMap[p.type]) typeMap[p.type] = { stock: 0, washing: 0, coating: 0, clean: 0 };
         typeMap[p.type].stock += p.stockCount;
         typeMap[p.type].washing += p.washingCount;
         typeMap[p.type].coating += p.coatingCount;
+        typeMap[p.type].clean += (p.cleanCount || 0);
     });
 
     if (Object.keys(typeMap).length === 0) { container.innerHTML = ''; return; }
 
     container.innerHTML = Object.entries(typeMap).map(([type, c]) => {
-        const total = c.stock + c.washing + c.coating;
+        const total = c.stock + c.washing + c.coating + c.clean;
         const sub = [];
         if (c.stock > 0) sub.push(`<span style="color:#059669;">▪ ${c.stock} stokta</span>`);
         if (c.washing > 0) sub.push(`<span style="color:#ea580c;">▪ ${c.washing} yıkamada</span>`);
         if (c.coating > 0) sub.push(`<span style="color:#2563eb;">▪ ${c.coating} kaplamada</span>`);
+        if (c.clean > 0) sub.push(`<span style="color:#9333ea;">▪ ${c.clean} temiz</span>`);
         return `
             <div class="type-summary-card" onclick="openTypeModal('${type.replace(/'/g, "\\'")}')">
                 <div class="type-card-label">${type}</div>
@@ -555,26 +610,142 @@ function renderTypeSummaryCards() {
     }).join('');
 }
 
+function renderStatusSummaryCards() {
+    const container = document.getElementById('status-summary-cards');
+    if (!container) return;
+
+    let washing = 0, coating = 0, clean = 0;
+    appState.plates.forEach(p => {
+        washing += p.washingCount || 0;
+        coating += p.coatingCount || 0;
+        clean += p.cleanCount || 0;
+    });
+
+    container.innerHTML = `
+        <div class="status-action-card status-washing-card" onclick="openDashboardFilterModal('washing')">
+            <div class="status-card-icon"><i class='bx bx-droplet'></i></div>
+            <div class="status-card-info">
+                <div class="status-card-count">${washing}</div>
+                <div class="status-card-label">Yıkamada</div>
+            </div>
+        </div>
+        <div class="status-action-card status-coating-card" onclick="openDashboardFilterModal('coating')">
+            <div class="status-card-icon"><i class='bx bx-layer-plus'></i></div>
+            <div class="status-card-info">
+                <div class="status-card-count">${coating}</div>
+                <div class="status-card-label">İpek Kaplamada</div>
+            </div>
+        </div>
+        <div class="status-action-card status-clean-card" onclick="openDashboardFilterModal('clean')">
+            <div class="status-card-icon"><i class='bx bx-check-circle'></i></div>
+            <div class="status-card-info">
+                <div class="status-card-count">${clean}</div>
+                <div class="status-card-label">Baskısız Temiz</div>
+            </div>
+        </div>
+    `;
+}
+
+window.filterPlatesByStatus = function(status) {
+    const searchVal = document.getElementById('search-plate')?.value.toLowerCase() || '';
+    renderPlates(searchVal, status);
+};
+
+window.openMovement = function(plateId, movementType) {
+    const plate = appState.plates.find(p => p.id === plateId);
+    if (!plate) return;
+
+    const modal = document.getElementById('movement-modal');
+    const iconEl = document.getElementById('movement-modal-icon');
+    const titleEl = document.getElementById('movement-modal-title');
+    const plateInfoEl = document.getElementById('movement-plate-info');
+    const labelEl = document.getElementById('movement-stepper-label');
+    const hintEl = document.getElementById('movement-max-hint');
+    const countInput = document.getElementById('movement-count');
+
+    document.getElementById('movement-plate-id').value = plateId;
+    document.getElementById('movement-type').value = movementType;
+
+    const configs = {
+        toWashing:   { max: plate.stockCount,         title: 'Yıkamaya Gönder',        icon: 'bx-droplet',      color: '#f59e0b', bg: '#fff7ed', label: 'Yıkamaya gönderilecek adet' },
+        toCoating:   { max: plate.stockCount,         title: 'Kaplamaya Gönder',        icon: 'bx-layer-plus',   color: '#3b82f6', bg: '#eff6ff', label: 'Kaplamaya gönderilecek adet' },
+        toClean:     { max: plate.stockCount,         title: 'Baskısız Temize Ayır',    icon: 'bx-check-circle', color: '#9333ea', bg: '#faf5ff', label: 'Baskısız temiz olarak ayrılacak adet' },
+        fromWashing: { max: plate.washingCount || 0,  title: 'Yıkamadan Stoka Geri Al', icon: 'bx-revision',     color: '#f59e0b', bg: '#fff7ed', label: 'Stoka döndürülecek adet' },
+        fromCoating: { max: plate.coatingCount || 0,  title: 'Kaplamadan Stoka Geri Al',icon: 'bx-revision',     color: '#3b82f6', bg: '#eff6ff', label: 'Stoka döndürülecek adet' },
+        fromClean:   { max: plate.cleanCount || 0,    title: 'Temizden Stoka Geri Al',  icon: 'bx-revision',     color: '#9333ea', bg: '#faf5ff', label: 'Stoka döndürülecek adet' }
+    };
+
+    const cfg = configs[movementType];
+    if (!cfg) return;
+
+    if (cfg.max === 0) {
+        showToast('Bu işlem için uygun adet bulunmuyor.', 'warning');
+        return;
+    }
+
+    iconEl.innerHTML = `<i class='bx ${cfg.icon}' style="color:${cfg.color};font-size:20px;"></i>`;
+    iconEl.style.cssText = `background:${cfg.bg};width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;`;
+    titleEl.textContent = cfg.title;
+    plateInfoEl.innerHTML = `<strong>${plate.name}</strong> — ${plate.type}, ${plate.inch}`;
+    labelEl.textContent = cfg.label;
+    hintEl.textContent = `Maksimum: ${cfg.max} adet`;
+    countInput.value = 1;
+    countInput.max = cfg.max;
+
+    modal.classList.add('active');
+};
+
+function confirmMovement() {
+    const plateId = document.getElementById('movement-plate-id').value;
+    const movementType = document.getElementById('movement-type').value;
+    const count = parseInt(document.getElementById('movement-count').value);
+    const plate = appState.plates.find(p => p.id === plateId);
+    if (!plate || isNaN(count) || count < 1) { showToast('Geçerli bir adet giriniz.', 'warning'); return; }
+
+    const actions = {
+        toWashing:   () => { if (count > plate.stockCount) return false; plate.stockCount -= count; plate.washingCount = (plate.washingCount || 0) + count; logActivity(`${plate.name}: ${count} adet yıkamaya gönderildi`, 'update'); return true; },
+        toCoating:   () => { if (count > plate.stockCount) return false; plate.stockCount -= count; plate.coatingCount = (plate.coatingCount || 0) + count; logActivity(`${plate.name}: ${count} adet kaplamaya gönderildi`, 'update'); return true; },
+        toClean:     () => { if (count > plate.stockCount) return false; plate.stockCount -= count; plate.cleanCount = (plate.cleanCount || 0) + count; logActivity(`${plate.name}: ${count} adet baskısız temize ayrıldı`, 'update'); return true; },
+        fromWashing: () => { if (count > (plate.washingCount || 0)) return false; plate.washingCount -= count; plate.stockCount += count; logActivity(`${plate.name}: ${count} adet yıkamadan stoka döndü`, 'update'); return true; },
+        fromCoating: () => { if (count > (plate.coatingCount || 0)) return false; plate.coatingCount -= count; plate.stockCount += count; logActivity(`${plate.name}: ${count} adet kaplamadan stoka döndü`, 'update'); return true; },
+        fromClean:   () => { if (count > (plate.cleanCount || 0)) return false; plate.cleanCount -= count; plate.stockCount += count; logActivity(`${plate.name}: ${count} adet temizden stoka döndü`, 'update'); return true; }
+    };
+
+    const action = actions[movementType];
+    if (!action) return;
+    const ok = action();
+    if (!ok) { showToast('Stok yetersiz.', 'warning'); return; }
+
+    saveData();
+    document.getElementById('movement-modal').classList.remove('active');
+    showToast('Hareket başarıyla kaydedildi.', 'success');
+    renderAll();
+}
+
 function renderDashboard() {
-    let total = 0, stock = 0, washing = 0, coating = 0;
+    let total = 0, stock = 0, washing = 0, coating = 0, clean = 0;
 
     appState.plates.forEach(p => {
         total += p.totalCount;
         stock += p.stockCount;
         washing += p.washingCount;
         coating += p.coatingCount;
+        clean += (p.cleanCount || 0);
     });
 
     document.getElementById('stat-total').textContent = total;
     document.getElementById('stat-stock').textContent = stock;
     document.getElementById('stat-washing').textContent = washing;
     document.getElementById('stat-coating').textContent = coating;
+    const statClean = document.getElementById('stat-clean');
+    if (statClean) statClean.textContent = clean;
 
     // Render Distribution Bars
     const maxVal = Math.max(total, 1);
     const distStock = document.getElementById('dist-stock');
     const distWashing = document.getElementById('dist-washing');
     const distCoating = document.getElementById('dist-coating');
+    const distClean = document.getElementById('dist-clean');
     if (distStock) {
         distStock.textContent = stock;
         document.querySelector('.dist-bar-stock').style.width = ((stock / maxVal) * 100) + '%';
@@ -586,6 +757,11 @@ function renderDashboard() {
     if (distCoating) {
         distCoating.textContent = coating;
         document.querySelector('.dist-bar-coating').style.width = ((coating / maxVal) * 100) + '%';
+    }
+    if (distClean) {
+        distClean.textContent = clean;
+        const barClean = document.querySelector('.dist-bar-clean');
+        if (barClean) barClean.style.width = ((clean / maxVal) * 100) + '%';
     }
 
     // Render Activities
@@ -647,13 +823,15 @@ function renderPlates(searchQuery = '', statusFilter = '') {
         return matchSearch && matchType && matchInch;
     });
 
-    // Apply status filter from dashboard card click
+    // Apply status filter
     if (statusFilter === 'stock') {
         filtered = filtered.filter(p => p.stockCount > 0);
     } else if (statusFilter === 'washing') {
         filtered = filtered.filter(p => p.washingCount > 0);
     } else if (statusFilter === 'coating') {
         filtered = filtered.filter(p => p.coatingCount > 0);
+    } else if (statusFilter === 'clean') {
+        filtered = filtered.filter(p => (p.cleanCount || 0) > 0);
     }
 
     if (filtered.length === 0) {
@@ -682,6 +860,7 @@ function renderPlates(searchQuery = '', statusFilter = '') {
             <td style="text-align:center;"><span class="status-badge status-stock">${plate.stockCount} Adet</span></td>
             <td style="text-align:center;">${plate.washingCount > 0 ? `<span style="background:#fff7ed;color:#ea580c;padding:4px 8px;border-radius:6px;font-weight:600;font-size:12px;">${plate.washingCount} Adet</span>` : '-'}</td>
             <td style="text-align:center;">${plate.coatingCount > 0 ? `<span style="background:#eff6ff;color:#2563eb;padding:4px 8px;border-radius:6px;font-weight:600;font-size:12px;">${plate.coatingCount} Adet</span>` : '-'}</td>
+            <td style="text-align:center;">${(plate.cleanCount||0) > 0 ? `<span style="background:#faf5ff;color:#9333ea;padding:4px 8px;border-radius:6px;font-weight:600;font-size:12px;">${plate.cleanCount} Adet</span>` : '-'}</td>
             <td>
                 <div class="action-btns" style="justify-content: center;">
                     <button type="button" class="btn btn-primary" style="padding: 5px 10px; font-size: 13px;" onclick="editPlate('${plate.id}')" title="Düzenle">
@@ -891,8 +1070,8 @@ function loadLocal() {
     } else {
         // Dummy data for visual
         appState.plates = [
-            { id: 'p1', image: '', name: 'Örnek Baskı A', type: 'Trikromi', inch: '12', size: '50x70', totalCount: 5, stockCount: 3, washingCount: 2, coatingCount: 0 },
-            { id: 'p2', image: '', name: 'Örnek Baskı B', type: 'Zemin', inch: '10', size: '40x60', totalCount: 10, stockCount: 8, washingCount: 0, coatingCount: 2 }
+            { id: 'p1', image: '', name: 'Örnek Baskı A', type: 'Trikromi', inch: '12', size: '50x70', totalCount: 5, stockCount: 3, washingCount: 2, coatingCount: 0, cleanCount: 0 },
+            { id: 'p2', image: '', name: 'Örnek Baskı B', type: 'Zemin', inch: '10', size: '40x60', totalCount: 10, stockCount: 8, washingCount: 0, coatingCount: 2, cleanCount: 0 }
         ];
         logActivity('Sistem başlatıldı, örnek veriler yüklendi.', 'add');
     }
@@ -1152,28 +1331,32 @@ const dfmTitleMap = {
     'all': 'Tüm Kalıplar',
     'stock': 'Stoktaki Kalıplar',
     'washing': 'Yıkamadaki Kalıplar',
-    'coating': 'Kaplamadaki Kalıplar'
+    'coating': 'Kaplamadaki Kalıplar',
+    'clean': 'Baskısız Temiz Kalıplar'
 };
 
 const dfmIconMap = {
     'all': '<i class="bx bx-package" style="color:#4318FF;"></i>',
     'stock': '<i class="bx bx-check-shield" style="color:#01B574;"></i>',
     'washing': '<i class="bx bx-water" style="color:#FFB547;"></i>',
-    'coating': '<i class="bx bx-layer-plus" style="color:#4318FF;"></i>'
+    'coating': '<i class="bx bx-layer-plus" style="color:#4318FF;"></i>',
+    'clean': '<i class="bx bx-check-circle" style="color:#9333ea;"></i>'
 };
 
 const dfmIconBgMap = {
     'all': 'background:rgba(67,24,255,0.08);',
     'stock': 'background:rgba(1,181,116,0.08);',
     'washing': 'background:rgba(255,181,71,0.08);',
-    'coating': 'background:rgba(67,24,255,0.08);'
+    'coating': 'background:rgba(67,24,255,0.08);',
+    'clean': 'background:rgba(147,51,234,0.08);'
 };
 
 const dfmHeaderMap = {
     'all':     '',
     'stock':   '<tr><th>Baskı Adı</th><th>Tür</th><th>İnç</th><th style="text-align:center;">Stokta</th></tr>',
     'washing': '<tr><th>Baskı Adı</th><th>Tür</th><th>İnç</th><th style="text-align:center;">Yıkamada</th></tr>',
-    'coating': '<tr><th>Baskı Adı</th><th>Tür</th><th>İnç</th><th style="text-align:center;">Kaplamada</th></tr>'
+    'coating': '<tr><th>Baskı Adı</th><th>Tür</th><th>İnç</th><th style="text-align:center;">Kaplamada</th></tr>',
+    'clean':   '<tr><th>Baskı Adı</th><th>Tür</th><th>İnç</th><th style="text-align:center;">Baskısız Temiz</th></tr>'
 };
 
 function openDashboardFilterModal(filter) {
@@ -1218,6 +1401,7 @@ function renderDfmTable(searchQuery) {
     if (currentDfmFilter === 'stock')   filtered = filtered.filter(p => p.stockCount > 0);
     else if (currentDfmFilter === 'washing') filtered = filtered.filter(p => p.washingCount > 0);
     else if (currentDfmFilter === 'coating') filtered = filtered.filter(p => p.coatingCount > 0);
+    else if (currentDfmFilter === 'clean')   filtered = filtered.filter(p => (p.cleanCount || 0) > 0);
 
     if (searchQuery) {
         const q = searchQuery.toLowerCase();
@@ -1243,11 +1427,12 @@ function renderDfmTable(searchQuery) {
 
         tbody.innerHTML = Object.entries(groups).map(([name, plates]) => {
             const chips = plates.map(p => {
-                const total = p.stockCount + p.washingCount + p.coatingCount;
+                const total = (p.stockCount || 0) + (p.washingCount || 0) + (p.coatingCount || 0) + (p.cleanCount || 0);
                 const parts = [];
-                if (p.stockCount > 0) parts.push(`<span style="color:#059669;">${p.stockCount} stok</span>`);
-                if (p.washingCount > 0) parts.push(`<span style="color:#ea580c;">${p.washingCount} yıkama</span>`);
-                if (p.coatingCount > 0) parts.push(`<span style="color:#2563eb;">${p.coatingCount} kaplama</span>`);
+                if (p.stockCount > 0)          parts.push(`<span style="color:#059669;">${p.stockCount} stok</span>`);
+                if (p.washingCount > 0)        parts.push(`<span style="color:#ea580c;">${p.washingCount} yıkama</span>`);
+                if (p.coatingCount > 0)        parts.push(`<span style="color:#2563eb;">${p.coatingCount} kaplama</span>`);
+                if ((p.cleanCount || 0) > 0)   parts.push(`<span style="color:#9333ea;">${p.cleanCount} temiz</span>`);
                 return `<span class="dfm-chip">${p.type} ${p.inch} <strong>${total}</strong>${parts.length ? ' · ' + parts.join(' · ') : ''}</span>`;
             }).join('');
             return `<tr class="dfm-name-row"><td><strong>${name}</strong></td><td><div class="dfm-chips">${chips}</div></td></tr>`;
@@ -1263,9 +1448,10 @@ function renderDfmTable(searchQuery) {
 
     tbody.innerHTML = filtered.map(p => {
         let cell = '';
-        if (currentDfmFilter === 'stock')   cell = `<td style="text-align:center;">${badge(p.stockCount,   '#ecfdf5','#059669')}</td>`;
-        if (currentDfmFilter === 'washing') cell = `<td style="text-align:center;">${badge(p.washingCount, '#fff7ed','#ea580c')}</td>`;
-        if (currentDfmFilter === 'coating') cell = `<td style="text-align:center;">${badge(p.coatingCount, '#eff6ff','#2563eb')}</td>`;
+        if (currentDfmFilter === 'stock')   cell = `<td style="text-align:center;">${badge(p.stockCount,         '#ecfdf5','#059669')}</td>`;
+        if (currentDfmFilter === 'washing') cell = `<td style="text-align:center;">${badge(p.washingCount,       '#fff7ed','#ea580c')}</td>`;
+        if (currentDfmFilter === 'coating') cell = `<td style="text-align:center;">${badge(p.coatingCount,       '#eff6ff','#2563eb')}</td>`;
+        if (currentDfmFilter === 'clean')   cell = `<td style="text-align:center;">${badge(p.cleanCount || 0,    '#faf5ff','#9333ea')}</td>`;
         return `<tr><td><strong>${p.name}</strong></td><td>${p.type}</td><td>${p.inch}</td>${cell}</tr>`;
     }).join('');
 }
