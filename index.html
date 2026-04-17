@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Baskı Kalıpları Stok Takip Programı</title>
+
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel='stylesheet'>
+</head>
+
+<body>
+    <!-- Login Overlay -->
+    <div id="login-overlay" class="overlay">
+        <div class="login-orb login-orb-1"></div>
+        <div class="login-orb login-orb-2"></div>
+        <div class="login-orb login-orb-3"></div>
+        <div class="login-card">
+            <div class="custom-login-logo"
+                style="display:flex; flex-direction:column; align-items:center; margin-bottom: 1.5rem; width:100%;">
+                <div
+                    style="width: 56px; height: 56px; background: #6366f1; border-radius: 16px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(99,102,241,0.3);">
+                    <i class='bx bx-layer-plus' style="color: white; font-size: 32px;"></i>
+                </div>
+                <h2 style="margin-top: 15px; font-size: 18px; font-weight:700; color: #1e293b; background: none;">Kalıp
+                    Stok Takip</h2>
+            </div>
+            <p>Hesabınıza giriş yapın</p>
+            <div class="form-group" style="text-align:left; margin-bottom:15px;">
+                <label>Kullanıcı Adı</label>
+                <input type="text" id="login-username" placeholder="Kullanıcı adınızı giriniz">
+            </div>
+            <div class="form-group" style="text-align:left;">
+                <label>Şifre</label>
+                <input type="password" id="login-password" placeholder="Şifrenizi giriniz">
+            </div>
+            <div class="form-group"
+                style="text-align:left; margin-top:20px; margin-bottom:25px; flex-direction:row; align-items:center; gap:10px; justify-content:center;">
+                <input type="checkbox" id="remember-me"
+                    style="width:18px; height:18px; margin:0; padding:0; cursor:pointer; accent-color:#6366f1;">
+                <label for="remember-me"
+                    style="font-weight:500; margin:0; cursor:pointer; color:#64748b; font-size:15px; user-select:none;">Beni
+                    Hatırla</label>
+            </div>
+            <button id="login-btn" class="btn btn-primary">Giriş Yap</button>
+        </div>
+    </div>
+
+    <!-- Main Application -->
+    <div id="app-container" class="page" style="display: none;">
+
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-inner">
+                <div class="sidebar-brand"
+                    style="justify-content: center; padding: 16px 8px 8px; flex-direction: column; gap: 8px;">
+                    <img src="kalisan.png" alt="Kalısan Logo" style="width: 150px; object-fit: contain;">
+                </div>
+
+                <div class="sidebar-divider"></div>
+
+                <nav class="sidebar-nav nav-menu">
+                    <a href="#dashboard" class="sidebar-link active" data-target="dashboard">
+                        <i class='bx bx-grid-alt'></i><span>Dashboard</span>
+                    </a>
+                    <a href="#add" class="sidebar-link" data-target="add-plate">
+                        <i class='bx bx-plus-circle'></i><span>Kalıp Ekle</span>
+                    </a>
+                    <a href="#list" class="sidebar-link" data-target="plate-list">
+                        <i class='bx bx-list-ul'></i><span>Kalıp Listesi</span>
+                    </a>
+                    <a href="#users" class="sidebar-link" id="nav-users" data-target="user-management"
+                        style="display:none;">
+                        <i class='bx bx-user-circle'></i><span>Kullanıcı Yönetimi</span>
+                    </a>
+                </nav>
+
+                <div class="sidebar-spacer"></div>
+
+                <div class="sidebar-footer">
+                    <div class="sidebar-footer-card">
+                        <div class="sidebar-footer-icon">
+                            <i class='bx bx-package'></i>
+                        </div>
+                        <p>Baskı Kalıpları</p>
+                        <span>Stok Takip Sistemi</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Area (right of sidebar) -->
+        <div class="main-area">
+
+            <!-- Top Bar (simplified) -->
+            <header class="top-bar">
+                <div class="top-bar-inner">
+                    <div class="top-bar-left">
+                        <button class="sidebar-toggle" id="sidebar-toggle" type="button" title="Menü">
+                            <i class='bx bx-menu'></i>
+                        </button>
+                        <div class="breadcrumb">
+                            <span class="breadcrumb-parent">Sayfalar /</span>
+                            <span class="breadcrumb-current" id="breadcrumb-current">Dashboard</span>
+                        </div>
+                    </div>
+                    <div class="top-bar-right">
+                        <button id="logout-btn" class="logout-btn" title="Çıkış Yap">
+                            <i class='bx bx-log-out'></i>
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <main class="main-content">
+
+                <!-- Dashboard -->
+                <section id="dashboard" class="view-section active">
+                    <div class="view-header">
+                        <h1>Baskı Kalıp Stok Takip Sistemi</h1>
+                    </div>
+                    <div class="stats-wrap">
+                        <div class="card card-indigo card-clickable" data-filter="all">
+                            <div class="card-stripe"></div>
+                            <div class="card-body">
+                                <div class="card-info">
+                                    <p class="label">Toplam Kalıp</p>
+                                    <div class="value" id="stat-total">0</div>
+                                </div>
+                                <div class="icon-box icon-indigo"><i class='bx bx-package'></i></div>
+                            </div>
+                        </div>
+                        <div class="card card-emerald card-clickable" data-filter="stock">
+                            <div class="card-stripe"></div>
+                            <div class="card-body">
+                                <div class="card-info">
+                                    <p class="label">Stoktaki Kalıplar</p>
+                                    <div class="value" id="stat-stock">0</div>
+                                </div>
+                                <div class="icon-box icon-emerald"><i class='bx bx-check-shield'></i></div>
+                            </div>
+                        </div>
+                        <div class="card card-amber card-clickable" data-filter="washing">
+                            <div class="card-stripe"></div>
+                            <div class="card-body">
+                                <div class="card-info">
+                                    <p class="label">Yıkamaya Giden</p>
+                                    <div class="value" id="stat-washing">0</div>
+                                </div>
+                                <div class="icon-box icon-amber"><i class='bx bx-droplet'></i></div>
+                            </div>
+                        </div>
+                        <div class="card card-blue card-clickable" data-filter="coating">
+                            <div class="card-stripe"></div>
+                            <div class="card-body">
+                                <div class="card-info">
+                                    <p class="label">Kaplamaya Giden</p>
+                                    <div class="value" id="stat-coating">0</div>
+                                </div>
+                                <div class="icon-box icon-blue"><i class='bx bx-layer-plus'></i></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="dashboard-grid">
+                        <div class="widget-card">
+                            <div class="widget-header">
+                                <h3><i class='bx bx-history'></i> Son Hareketler</h3>
+                                <div class="activity-pagination">
+                                    <button id="activity-prev" class="act-page-btn" disabled><i class='bx bx-chevron-left'></i></button>
+                                    <span id="activity-page-info">1 / 1</span>
+                                    <button id="activity-next" class="act-page-btn"><i class='bx bx-chevron-right'></i></button>
+                                </div>
+                            </div>
+                            <div class="activity-list" id="activity-list"></div>
+                        </div>
+                        <div class="widget-card">
+                            <div class="widget-header">
+                                <h3><i class='bx bx-pie-chart-alt-2'></i> Stok Dağılımı</h3>
+                            </div>
+                            <div class="distribution-list" id="distribution-list">
+                                <div class="dist-item">
+                                    <div class="dist-label"><span class="dist-dot"
+                                            style="background:#10b981;"></span>Stokta
+                                    </div>
+                                    <div class="dist-bar-wrap">
+                                        <div class="dist-bar dist-bar-stock"></div>
+                                    </div>
+                                    <span class="dist-value" id="dist-stock">0</span>
+                                </div>
+                                <div class="dist-item">
+                                    <div class="dist-label"><span class="dist-dot"
+                                            style="background:#f59e0b;"></span>Yıkamada</div>
+                                    <div class="dist-bar-wrap">
+                                        <div class="dist-bar dist-bar-washing"></div>
+                                    </div>
+                                    <span class="dist-value" id="dist-washing">0</span>
+                                </div>
+                                <div class="dist-item">
+                                    <div class="dist-label"><span class="dist-dot"
+                                            style="background:#3b82f6;"></span>Kaplamada</div>
+                                    <div class="dist-bar-wrap">
+                                        <div class="dist-bar dist-bar-coating"></div>
+                                    </div>
+                                    <span class="dist-value" id="dist-coating">0</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Add Plate -->
+                <section id="add-plate" class="view-section">
+                    <div class="page-title-center">
+                        <h1>Yeni Kalıp Ekle</h1>
+                    </div>
+                    <div class="form-card-centered">
+                        <form id="add-plate-form" class="add-plate-layout">
+                            <div class="add-plate-left">
+                                <label class="field-label">KALIP GÖRSELİ</label>
+                                <div class="image-upload-box">
+                                    <input type="file" id="plate-image-file" accept="image/*">
+                                    <input type="hidden" id="plate-image">
+                                    <img id="plate-image-preview" src="" style="display:none;">
+                                    <div id="plate-image-placeholder">
+                                        <i class='bx bx-image-add'
+                                            style="font-size:48px; color: var(--primary); opacity:0.6; margin-bottom:14px;"></i>
+                                        <p style="font-weight:700; font-size:15px; margin-bottom:4px;">Tıkla veya
+                                            Sürükle
+                                        </p>
+                                        <span style="font-size:13px; color:var(--text-muted);">Kalıp fotoğrafını
+                                            yüklemek<br>için cihazdan seçin</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="add-plate-right">
+                                <div class="form-group">
+                                    <label>BASKI ADI</label>
+                                    <input type="text" id="plate-name" placeholder="Baskı adını girin" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>KALIP TÜRÜ</label>
+                                    <select id="plate-type" required>
+                                        <option value="">Seçiniz</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>BALON İNÇ</label>
+                                    <select id="plate-inch" required>
+                                        <option value="">Seçiniz</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>KALIP ÖLÇÜSÜ (CM)</label>
+                                    <select id="plate-size" required>
+                                        <option value="">Seçiniz</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>TOPLAM KALIP ADETİ</label>
+                                    <input type="number" id="plate-count" min="1" placeholder="Adet girin" required>
+                                </div>
+                                <div class="form-actions-right">
+                                    <button type="submit" class="btn btn-primary"><i class='bx bx-save'></i>
+                                        Kaydet</button>
+                                    <button type="reset" class="btn btn-outline">Temizle</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </section>
+
+                <!-- Plate List -->
+                <section id="plate-list" class="view-section">
+                    <div id="type-summary-cards" class="type-summary-grid"></div>
+                    <div class="view-header">
+                        <h1>Kalıp Envanteri</h1>
+                    </div>
+                    <div class="filter-row">
+                        <div class="search-box filter-search-box">
+                            <i class='bx bx-search'></i>
+                            <input type="text" id="search-plate" placeholder="Baskı adı ara...">
+                        </div>
+                        <div class="filter-group">
+                            <i class='bx bx-filter-alt'></i>
+                            <select id="filter-type" class="filter-select">
+                                <option value="">Tüm Türler</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <i class='bx bx-ruler'></i>
+                            <select id="filter-inch" class="filter-select">
+                                <option value="">Tüm İnçler</option>
+                            </select>
+                        </div>
+                        <button id="clear-filters" class="btn btn-outline btn-sm filter-clear" style="display:none;">
+                            <i class='bx bx-x'></i> Temizle
+                        </button>
+                    </div>
+                    <div class="table-container widget-card">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th style="width:70px;">Görsel</th>
+                                    <th style="width:20%;">Baskı Adı</th>
+                                    <th style="width:12%;">Kalıp Türü</th>
+                                    <th style="width:8%;">İnç</th>
+                                    <th style="width:12%;">Kalıp Ölçüsü</th>
+                                    <th style="text-align:center; width:10%;">Stokta</th>
+                                    <th style="text-align:center; width:10%;">Yıkamada</th>
+                                    <th style="text-align:center; width:10%;">Kaplamada</th>
+                                    <th style="text-align:center;">İşlemler</th>
+                                </tr>
+                            </thead>
+                            <tbody id="plate-table-body"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- User Management -->
+                <section id="user-management" class="view-section">
+                    <div class="view-header flex-header">
+                        <h1>Kullanıcı Yönetimi</h1>
+                        <button id="open-add-user-btn" class="btn btn-primary"><i class='bx bx-plus'></i> Yeni
+                            Kullanıcı</button>
+                    </div>
+                    <div class="table-container widget-card">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Kullanıcı Adı</th>
+                                    <th>Rol</th>
+                                    <th>Erişim(Sayfalar)</th>
+                                    <th>İşlemler</th>
+                                </tr>
+                            </thead>
+                            <tbody id="user-table-body"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+            </main>
+
+        </div><!-- /.main-area -->
+
+        <!-- Edit Plate Modal -->
+        <div id="edit-plate-modal" class="modal">
+            <div class="modal-content edit-modal-content">
+                <div class="modal-header">
+                    <h3 id="edit-plate-title">Kalıp Düzenle</h3>
+                    <button class="close-modal"><i class='bx bx-x'></i></button>
+                </div>
+                <div class="modal-body">
+                    <form id="edit-plate-form">
+                        <input type="hidden" id="edit-plate-id">
+                        <div class="edit-plate-layout">
+                            <!-- Sol: Görsel -->
+                            <div class="edit-plate-image-col">
+                                <label class="edit-field-label">Kalıp Görseli</label>
+                                <div class="image-upload-box edit-image-box">
+                                    <input type="file" id="edit-plate-image-file" accept="image/*"
+                                        style="opacity:0;position:absolute;top:0;left:0;width:100%;height:100%;cursor:pointer;z-index:10;">
+                                    <input type="hidden" id="edit-plate-image">
+                                    <img id="edit-plate-image-preview" src=""
+                                        style="width:100%;height:100%;object-fit:contain;display:block;border-radius:8px;z-index:5;">
+                                    <div id="edit-plate-image-placeholder"
+                                        style="display:none;position:absolute;top:0;left:0;width:100%;height:100%;flex-direction:column;align-items:center;justify-content:center;color:#94a3b8;">
+                                        <i class='bx bx-image-add' style="font-size:28px;color:#6366f1;margin-bottom:4px;"></i>
+                                        <span style="font-size:12px;font-weight:600;">Fotoğraf Seç</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Sağ: Alanlar -->
+                            <div class="edit-plate-fields-col">
+                                <div class="edit-fields-grid">
+                                    <div class="form-group edit-field-span2"><label>Baskı Adı</label><input type="text" id="edit-plate-name" required></div>
+                                    <div class="form-group"><label>Kalıp Türü</label><select id="edit-plate-type" required></select></div>
+                                    <div class="form-group"><label>Balon İnç</label><select id="edit-plate-inch" required></select></div>
+                                    <div class="form-group"><label>Kalıp Ölçüsü (cm)</label><select id="edit-plate-size" required></select></div>
+                                    <div class="form-group"><label>Toplam Adet</label><input type="number" id="edit-plate-count" min="1" required></div>
+                                </div>
+                                <button type="submit" class="btn btn-primary w-100" style="margin-top:10px;">Güncelle</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- User Form Modal -->
+        <div id="user-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 id="user-modal-title">Kullanıcı Ekle/Düzenle</h3>
+                    <button class="close-modal"><i class='bx bx-x'></i></button>
+                </div>
+                <div class="modal-body">
+                    <form id="user-form">
+                        <input type="hidden" id="edit-user-id">
+                        <div class="form-group"><label>Kullanıcı Adı</label><input type="text" id="form-username"
+                                required></div>
+                        <div class="form-group"><label>Şifre</label><input type="text" id="form-password" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Rol Seçimi</label>
+                            <select id="form-role" required>
+                                <option value="superadmin">Super Admin</option>
+                                <option value="admin">Admin</option>
+                                <option value="operator">Operatör</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="margin-top:15px;">
+                            <label>Sayfa Yetkileri</label>
+                            <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px;">
+                                <label style="font-weight:normal;display:flex;align-items:center;gap:5px;"><input
+                                        type="checkbox" name="user-pages" value="dashboard"> Dashboard</label>
+                                <label style="font-weight:normal;display:flex;align-items:center;gap:5px;"><input
+                                        type="checkbox" name="user-pages" value="add-plate"> Kalıp Ekle</label>
+                                <label style="font-weight:normal;display:flex;align-items:center;gap:5px;"><input
+                                        type="checkbox" name="user-pages" value="plate-list"> Kalıp Listesi</label>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100" style="margin-top:20px;">Kaydet</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Movement Modal -->
+        <div id="movement-modal" class="modal">
+            <div class="modal-content movement-modal-content">
+                <div class="modal-header">
+                    <div class="movement-modal-title-wrap">
+                        <div class="movement-modal-icon" id="movement-modal-icon"></div>
+                        <h3 id="movement-modal-title">Hareket</h3>
+                    </div>
+                    <button class="close-modal" id="movement-modal-close"><i class='bx bx-x'></i></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="movement-plate-id">
+                    <input type="hidden" id="movement-type">
+                    <div class="movement-plate-info" id="movement-plate-info"></div>
+                    <div class="movement-stepper-wrap">
+                        <label class="movement-stepper-label" id="movement-stepper-label">Gönderilecek Adet</label>
+                        <div class="movement-stepper">
+                            <button type="button" class="stepper-btn" id="stepper-minus"><i
+                                    class='bx bx-minus'></i></button>
+                            <input type="number" id="movement-count" class="stepper-input" value="1" min="1">
+                            <button type="button" class="stepper-btn" id="stepper-plus"><i
+                                    class='bx bx-plus'></i></button>
+                        </div>
+                        <p class="movement-max-hint" id="movement-max-hint"></p>
+                    </div>
+                    <div class="movement-action-row">
+                        <button type="button" class="btn btn-outline" id="movement-cancel-btn">İptal</button>
+                        <button type="button" class="btn btn-primary" id="movement-confirm-btn">
+                            <i class='bx bx-send' id="movement-confirm-icon"></i>
+                            <span id="movement-confirm-text">Gönder</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Dashboard Filter Modal -->
+    <div id="dashboard-filter-modal" class="modal">
+        <div class="modal-content dashboard-filter-modal-content">
+            <div class="modal-header">
+                <div class="movement-modal-title-wrap">
+                    <div class="movement-modal-icon" id="dfm-icon"></div>
+                    <h3 id="dfm-title">Kalıplar</h3>
+                </div>
+                <button class="close-modal"
+                    onclick="document.getElementById('dashboard-filter-modal').classList.remove('active')"><i
+                        class='bx bx-x'></i></button>
+            </div>
+            <div class="modal-body" style="padding:0;">
+                <div class="dfm-search-wrap">
+                    <i class='bx bx-search'></i>
+                    <input type="text" id="dfm-search" placeholder="Baskı adı ara..."
+                        oninput="filterDfmList(this.value)">
+                </div>
+                <div class="dfm-summary" id="dfm-summary"></div>
+                <div class="dfm-table-wrap">
+                    <table class="data-table">
+                        <thead id="dfm-thead"></thead>
+                        <tbody id="dfm-table-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Image Preview Modal -->
+    <div id="image-preview-modal" class="modal" onclick="this.classList.remove('active')">
+        <div class="image-preview-modal-content" onclick="event.stopPropagation()">
+            <div class="image-preview-header">
+                <span><i class='bx bx-image'></i><span id="image-preview-title">Kalıp Görseli</span></span>
+                <button class="image-preview-close"
+                    onclick="document.getElementById('image-preview-modal').classList.remove('active')">
+                    <i class='bx bx-x'></i>
+                </button>
+            </div>
+            <div class="image-preview-body">
+                <img id="image-preview-modal-img" src="" alt="Kalıp Görseli">
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container"></div>
+
+    <!-- Custom Confirm Modal -->
+    <div id="confirm-modal" class="modal">
+        <div class="modal-content confirm-modal-content">
+            <div class="confirm-icon-wrap" id="confirm-icon-wrap">
+                <i class="bx bx-trash" id="confirm-icon"></i>
+            </div>
+            <h3 id="confirm-title">Emin misiniz?</h3>
+            <p id="confirm-message"></p>
+            <div class="confirm-actions">
+                <button class="btn btn-outline" id="confirm-cancel">İptal</button>
+                <button class="btn" id="confirm-ok">Evet</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js?v=6"></script>
+</body>
+
+</html>
