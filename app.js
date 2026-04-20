@@ -467,9 +467,9 @@ async function handleAddPlate(e) {
     document.getElementById('plate-image').value = '';
     document.getElementById('plate-image-placeholder').style.display = 'flex';
 
-    showToast(`"${newPlate.name}" başarıyla kaydedildi.`, 'success');
     switchView('plate-list');
     document.querySelector('[data-target="plate-list"]').click();
+    setTimeout(() => showToast(`"${newPlate.name}" başarıyla kaydedildi.`, 'success'), 50);
 }
 
 window.editPlate = function (plateId) {
@@ -1063,6 +1063,18 @@ function loadLocal() {
         appState.activities = parsed.activities || [];
         appState.users = parsed.users || [];
         appState.dropdowns = parsed.dropdowns || null;
+
+        // Migrate: admin adını güncelle
+        let migrated = false;
+        const adminUser = appState.users.find(u => u.username === 'admin');
+        if (adminUser && adminUser.name !== 'Sistem Yöneticisi') {
+            adminUser.name = 'Sistem Yöneticisi';
+            migrated = true;
+        }
+        appState.activities.forEach(a => {
+            if (a.user === 'admin') { a.user = 'Sistem Yöneticisi'; migrated = true; }
+        });
+        if (migrated) saveData();
     } else {
         // Dummy data for visual
         appState.plates = [
