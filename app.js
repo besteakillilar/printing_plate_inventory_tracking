@@ -71,6 +71,7 @@ document.addEventListener('DOMContentLoaded', () => {
             user = {
                 id: 'U1_emergency',
                 username: 'admin',
+                name: 'Sistem Yöneticisi',
                 password: '123',
                 role: 'superadmin',
                 permissions: ['dashboard', 'add-plate', 'plate-list']
@@ -152,6 +153,7 @@ function setupEventListeners() {
             user = {
                 id: 'U1_emergency',
                 username: 'admin',
+                name: 'Sistem Yöneticisi',
                 password: '123',
                 role: 'superadmin',
                 permissions: ['dashboard', 'add-plate', 'plate-list']
@@ -186,12 +188,6 @@ function setupEventListeners() {
     addPlateForm.addEventListener('submit', handleAddPlate);
     if (editPlateForm) editPlateForm.addEventListener('submit', handleEditPlateForm);
 
-    // Add plate distribution hint
-    const distFields = ['plate-count', 'plate-stock-count', 'plate-washing-count', 'plate-coating-count', 'plate-clean-count'];
-    distFields.forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.addEventListener('input', updateAddDistHint);
-    });
 
     // UI Interactions
     handleImageSelection('plate-image-file', 'plate-image-preview', 'plate-image', 'plate-image-placeholder');
@@ -424,32 +420,25 @@ async function handleAddPlate(e) {
         return;
     }
 
-    const nameVal = document.getElementById('plate-name').value.trim();
-    const typeVal = document.getElementById('plate-type').value;
-    const inchVal = document.getElementById('plate-inch').value;
-    const sizeVal = document.getElementById('plate-size').value;
-    const countVal = document.getElementById('plate-count').value;
+    const nameVal   = document.getElementById('plate-name').value.trim();
+    const typeVal   = document.getElementById('plate-type').value;
+    const inchVal   = document.getElementById('plate-inch').value;
+    const sizeVal   = document.getElementById('plate-size').value;
+    const countVal  = document.getElementById('plate-count').value;
+    const statusVal = document.getElementById('plate-status-type').value;
 
-    if (!nameVal || !typeVal || !inchVal || !sizeVal || !countVal) {
+    if (!nameVal || !typeVal || !inchVal || !sizeVal || !countVal || !statusVal) {
         showToast('Lütfen tüm alanları doldurunuz!', 'warning');
         return;
     }
 
     const totalCount  = parseInt(countVal);
-    const washingCount = parseInt(document.getElementById('plate-washing-count')?.value) || 0;
-    const coatingCount = parseInt(document.getElementById('plate-coating-count')?.value) || 0;
-    const cleanCount   = parseInt(document.getElementById('plate-clean-count')?.value)   || 0;
-    const specifiedStock = parseInt(document.getElementById('plate-stock-count')?.value) || 0;
+    const stockCount   = statusVal === 'stock'   ? totalCount : 0;
+    const washingCount = statusVal === 'washing'  ? totalCount : 0;
+    const coatingCount = statusVal === 'coating'  ? totalCount : 0;
+    const cleanCount   = statusVal === 'clean'    ? totalCount : 0;
 
-    const distSum = specifiedStock + washingCount + coatingCount + cleanCount;
-
-    if (distSum > totalCount) {
-        showToast(`Dağılım toplamı (${distSum}) toplam adetten (${totalCount}) fazla olamaz!`, 'warning');
-        return;
-    }
-
-    // Dağılım girilmemişse tümü stoka at; kısmi girilmişse fark stoka gider
-    const stockCount = distSum === 0 ? totalCount : specifiedStock + (totalCount - distSum);
+    const statusLabels = { stock: 'Stokta', washing: 'Yıkamada', coating: 'Kaplamada', clean: 'Baskısız Temiz' };
 
     const newPlate = {
         id: 'P' + Date.now(),
@@ -467,22 +456,11 @@ async function handleAddPlate(e) {
     };
 
     appState.plates.push(newPlate);
-
-    const distParts = [];
-    if (stockCount > 0)   distParts.push(`${stockCount} stokta`);
-    if (washingCount > 0) distParts.push(`${washingCount} yıkamada`);
-    if (coatingCount > 0) distParts.push(`${coatingCount} kaplamada`);
-    if (cleanCount > 0)   distParts.push(`${cleanCount} baskısız temiz`);
-    logActivity(`Yeni kalıp eklendi: ${newPlate.name} — ${newPlate.type}, ${newPlate.inch} (${totalCount} adet${distParts.length ? ': ' + distParts.join(', ') : ''})`, 'add');
+    logActivity(`Yeni kalıp eklendi: ${newPlate.name} — ${newPlate.type}, ${newPlate.inch} (${totalCount} adet · ${statusLabels[statusVal]})`, 'add');
 
     saveData();
 
     addPlateForm.reset();
-    document.getElementById('plate-stock-count').value   = 0;
-    document.getElementById('plate-washing-count').value = 0;
-    document.getElementById('plate-coating-count').value = 0;
-    document.getElementById('plate-clean-count').value   = 0;
-    updateAddDistHint();
     const prevImg = document.getElementById('plate-image-preview');
     prevImg.style.display = 'none';
     prevImg.src = '';
@@ -600,7 +578,7 @@ function logActivity(message, type) {
         id: Date.now(),
         message: message,
         type: type, // add, update, delete
-        user: appState.currentUser ? appState.currentUser.username : 'Sistem',
+        user: appState.currentUser ? (appState.currentUser.name || appState.currentUser.username) : 'Sistem',
         timestamp: nowFormatted()
     };
     appState.activities.unshift(act);
@@ -608,39 +586,6 @@ function logActivity(message, type) {
 }
 
 // Render Functions
-function updateAddDistHint() {
-    const hint = document.getElementById('add-dist-hint');
-    if (!hint) return;
-    const total    = parseInt(document.getElementById('plate-count')?.value) || 0;
-    const stock    = parseInt(document.getElementById('plate-stock-count')?.value)   || 0;
-    const washing  = parseInt(document.getElementById('plate-washing-count')?.value) || 0;
-    const coating  = parseInt(document.getElementById('plate-coating-count')?.value) || 0;
-    const clean    = parseInt(document.getElementById('plate-clean-count')?.value)   || 0;
-    const distSum  = stock + washing + coating + clean;
-
-    if (total === 0) {
-        hint.textContent = 'Toplam adet girin';
-        hint.className = 'add-dist-hint';
-        return;
-    }
-    if (distSum > total) {
-        hint.textContent = `Fazla! ${distSum} / ${total} — ${distSum - total} adet fazla`;
-        hint.className = 'add-dist-hint warning';
-        return;
-    }
-    const remaining = total - distSum;
-    if (distSum === 0) {
-        hint.textContent = `Tümü (${total} adet) stoka eklenecek`;
-        hint.className = 'add-dist-hint valid';
-    } else if (remaining > 0) {
-        hint.textContent = `Kalan ${remaining} adet stoka eklenecek · Toplam: ${total}`;
-        hint.className = 'add-dist-hint valid';
-    } else {
-        hint.textContent = `Dağılım tam: ${total} adet`;
-        hint.className = 'add-dist-hint valid';
-    }
-}
-
 function renderAll() {
     renderDashboard();
     renderPlates();
@@ -941,7 +886,7 @@ function logActivity(message, type) {
         id: Date.now(),
         message: message,
         type: type, // add, update, delete
-        user: appState.currentUser ? appState.currentUser.username : 'Sistem',
+        user: appState.currentUser ? (appState.currentUser.name || appState.currentUser.username) : 'Sistem',
         timestamp: nowFormatted()
     };
     appState.activities.unshift(act);
@@ -996,7 +941,7 @@ function renderUsers() {
     appState.users.forEach(user => {
         const row = document.createElement('tr');
         row.innerHTML = `
-            <td><strong>${user.username}</strong></td>
+            <td><strong>${user.name || user.username}</strong></td>
             <td>${user.role}</td>
             <td>${user.permissions.join(', ')}</td>
             <td>
@@ -1083,6 +1028,7 @@ async function syncCloudData() {
                 appState.users = [{
                     id: 'U1',
                     username: 'admin',
+                    name: 'Sistem Yöneticisi',
                     password: '123',
                     role: 'superadmin',
                     permissions: ['dashboard', 'add-plate', 'plate-list']
