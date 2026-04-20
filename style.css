@@ -82,6 +82,34 @@ html {
     scroll-behavior: smooth;
 }
 
+/* ============================================
+   Custom Scrollbar — Design-consistent
+   ============================================ */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--border-light);
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #c4cad8;
+    border-radius: 10px;
+    transition: background 0.2s;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #a3aed0;
+}
+
+* {
+    scrollbar-width: thin;
+    scrollbar-color: #c4cad8 var(--border-light);
+}
+
 body {
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
     background: var(--gradient-bg);
@@ -689,6 +717,8 @@ h4 {
     padding: 8px 32px 80px;
     position: relative;
     z-index: 1;
+    overflow-y: auto;
+    height: calc(100vh - 60px);
 }
 
 .view-section {
@@ -1581,6 +1611,8 @@ h4 {
     height: 40px;
     border-radius: var(--radius-sm);
     min-width: 180px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-medium);
 }
 
 .filter-search-box input {
@@ -1588,9 +1620,91 @@ h4 {
     width: 150px;
 }
 
+/* Plate List Tabs */
+.plate-tabs {
+    display: flex;
+    width: 100%;
+    margin-bottom: 20px;
+    background: var(--card-bg);
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+    box-shadow: var(--shadow-soft);
+    border: 1px solid var(--border-medium);
+    border-bottom: none;
+    overflow: hidden;
+    position: relative;
+}
+
+.plate-tabs::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #4318FF 0%, #868CFF 55%, #f472b6 100%);
+}
+
+.plate-tab {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 14px 16px;
+    border: none;
+    border-bottom: 3px solid transparent;
+    background: transparent;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+    white-space: nowrap;
+    position: relative;
+    z-index: 1;
+    margin-bottom: 0;
+}
+
+.plate-tab + .plate-tab {
+    border-left: 1px solid var(--border-medium);
+}
+
+.plate-tab:hover {
+    color: var(--primary);
+    background: var(--primary-light);
+}
+
+.plate-tab.active {
+    color: var(--primary);
+    background: var(--primary-light);
+    border-bottom-color: var(--primary);
+    font-weight: 700;
+}
+
+.tab-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 22px;
+    padding: 2px 7px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 700;
+    background: var(--border-medium);
+    color: var(--text-muted);
+    transition: all 0.2s;
+}
+
+.plate-tab.active .tab-badge {
+    background: var(--primary);
+    color: white;
+}
+
 .table-container {
     padding: 0;
     overflow: hidden;
+    border-radius: 0 0 var(--radius-md) var(--radius-md);
 }
 
 .data-table {
@@ -1823,6 +1937,8 @@ h4 {
 
 .modal-body {
     padding: 26px;
+    overflow-y: auto;
+    max-height: 80vh;
 }
 
 /* ============================================

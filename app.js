@@ -9,6 +9,8 @@
 
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyeO-E-GPKjzByXoLy0GT1cdTNsuCuuliILtnOSm56FOZHM02C7v6sdePehGP-S9ubsUw/exec';
 
+let currentPlateTab = 'all';
+
 // App State
 let appState = {
     currentUser: null,
@@ -389,7 +391,7 @@ function switchView(targetId) {
 
     // Re-render specifics if needed
     if (targetId === 'dashboard') renderDashboard();
-    if (targetId === 'plate-list') { renderPlates(); renderTypeSummaryCards(); renderStatusSummaryCards(); }
+    if (targetId === 'plate-list') { renderPlates(); renderTypeSummaryCards(); renderTabCounts(); }
     if (targetId === 'user-management') renderUsers();
 }
 
@@ -576,7 +578,7 @@ function renderAll() {
     renderDashboard();
     renderPlates();
     renderTypeSummaryCards();
-    renderStatusSummaryCards();
+    renderTabCounts();
 }
 
 function renderTypeSummaryCards() {
@@ -610,45 +612,26 @@ function renderTypeSummaryCards() {
     }).join('');
 }
 
-function renderStatusSummaryCards() {
-    const container = document.getElementById('status-summary-cards');
-    if (!container) return;
-
-    let washing = 0, coating = 0, clean = 0;
-    appState.plates.forEach(p => {
-        washing += p.washingCount || 0;
-        coating += p.coatingCount || 0;
-        clean += p.cleanCount || 0;
+function renderTabCounts() {
+    const plates = appState.plates;
+    const counts = {
+        all:     plates.reduce((s, p) => s + (p.totalCount || 0), 0),
+        stock:   plates.reduce((s, p) => s + (p.stockCount || 0), 0),
+        washing: plates.reduce((s, p) => s + (p.washingCount || 0), 0),
+        coating: plates.reduce((s, p) => s + (p.coatingCount || 0), 0)
+    };
+    Object.entries(counts).forEach(([key, val]) => {
+        const el = document.getElementById(`tab-count-${key}`);
+        if (el) el.textContent = val;
     });
-
-    container.innerHTML = `
-        <div class="status-action-card status-washing-card" onclick="openDashboardFilterModal('washing')">
-            <div class="status-card-icon"><i class='bx bx-droplet'></i></div>
-            <div class="status-card-info">
-                <div class="status-card-count">${washing}</div>
-                <div class="status-card-label">Yıkamada</div>
-            </div>
-        </div>
-        <div class="status-action-card status-coating-card" onclick="openDashboardFilterModal('coating')">
-            <div class="status-card-icon"><i class='bx bx-layer-plus'></i></div>
-            <div class="status-card-info">
-                <div class="status-card-count">${coating}</div>
-                <div class="status-card-label">İpek Kaplamada</div>
-            </div>
-        </div>
-        <div class="status-action-card status-clean-card" onclick="openDashboardFilterModal('clean')">
-            <div class="status-card-icon"><i class='bx bx-check-circle'></i></div>
-            <div class="status-card-info">
-                <div class="status-card-count">${clean}</div>
-                <div class="status-card-label">Baskısız Temiz</div>
-            </div>
-        </div>
-    `;
 }
 
-window.filterPlatesByStatus = function(status) {
-    const searchVal = document.getElementById('search-plate')?.value.toLowerCase() || '';
-    renderPlates(searchVal, status);
+window.setPlateTab = function(status) {
+    currentPlateTab = status;
+    document.querySelectorAll('.plate-tab').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.status === status);
+    });
+    renderPlates(document.getElementById('search-plate')?.value.toLowerCase() || '');
 };
 
 window.openMovement = function(plateId, movementType) {
@@ -723,15 +706,12 @@ function confirmMovement() {
 }
 
 function renderDashboard() {
-    let total = 0, stock = 0, washing = 0, coating = 0, clean = 0;
-
-    appState.plates.forEach(p => {
-        total += p.totalCount;
-        stock += p.stockCount;
-        washing += p.washingCount;
-        coating += p.coatingCount;
-        clean += (p.cleanCount || 0);
-    });
+    const plates = appState.plates;
+    const total   = plates.reduce((s, p) => s + p.totalCount, 0);
+    const stock   = plates.reduce((s, p) => s + (p.stockCount || 0), 0);
+    const washing = plates.reduce((s, p) => s + (p.washingCount || 0), 0);
+    const coating = plates.reduce((s, p) => s + (p.coatingCount || 0), 0);
+    const clean   = plates.reduce((s, p) => s + (p.cleanCount || 0), 0);
 
     document.getElementById('stat-total').textContent = total;
     document.getElementById('stat-stock').textContent = stock;
@@ -740,28 +720,33 @@ function renderDashboard() {
     const statClean = document.getElementById('stat-clean');
     if (statClean) statClean.textContent = clean;
 
-    // Render Distribution Bars
+    // Distribution Bars
     const maxVal = Math.max(total, 1);
+    const stockQty   = stock;
+    const washingQty = washing;
+    const coatingQty = coating;
+    const cleanQty   = clean;
+
     const distStock = document.getElementById('dist-stock');
     const distWashing = document.getElementById('dist-washing');
     const distCoating = document.getElementById('dist-coating');
     const distClean = document.getElementById('dist-clean');
     if (distStock) {
-        distStock.textContent = stock;
-        document.querySelector('.dist-bar-stock').style.width = ((stock / maxVal) * 100) + '%';
+        distStock.textContent = stockQty;
+        document.querySelector('.dist-bar-stock').style.width = ((stockQty / maxVal) * 100) + '%';
     }
     if (distWashing) {
-        distWashing.textContent = washing;
-        document.querySelector('.dist-bar-washing').style.width = ((washing / maxVal) * 100) + '%';
+        distWashing.textContent = washingQty;
+        document.querySelector('.dist-bar-washing').style.width = ((washingQty / maxVal) * 100) + '%';
     }
     if (distCoating) {
-        distCoating.textContent = coating;
-        document.querySelector('.dist-bar-coating').style.width = ((coating / maxVal) * 100) + '%';
+        distCoating.textContent = coatingQty;
+        document.querySelector('.dist-bar-coating').style.width = ((coatingQty / maxVal) * 100) + '%';
     }
     if (distClean) {
-        distClean.textContent = clean;
+        distClean.textContent = cleanQty;
         const barClean = document.querySelector('.dist-bar-clean');
-        if (barClean) barClean.style.width = ((clean / maxVal) * 100) + '%';
+        if (barClean) barClean.style.width = ((cleanQty / maxVal) * 100) + '%';
     }
 
     // Render Activities
@@ -810,7 +795,7 @@ function renderDashboard() {
     });
 }
 
-function renderPlates(searchQuery = '', statusFilter = '') {
+function renderPlates(searchQuery = '') {
     plateTableBody.innerHTML = '';
 
     const typeFilter = document.getElementById('filter-type')?.value || '';
@@ -823,19 +808,17 @@ function renderPlates(searchQuery = '', statusFilter = '') {
         return matchSearch && matchType && matchInch;
     });
 
-    // Apply status filter
-    if (statusFilter === 'stock') {
-        filtered = filtered.filter(p => p.stockCount > 0);
-    } else if (statusFilter === 'washing') {
-        filtered = filtered.filter(p => p.washingCount > 0);
-    } else if (statusFilter === 'coating') {
-        filtered = filtered.filter(p => p.coatingCount > 0);
-    } else if (statusFilter === 'clean') {
-        filtered = filtered.filter(p => (p.cleanCount || 0) > 0);
+    // Apply active tab filter
+    if (currentPlateTab === 'stock') {
+        filtered = filtered.filter(p => (p.stockCount || 0) > 0);
+    } else if (currentPlateTab === 'washing') {
+        filtered = filtered.filter(p => (p.washingCount || 0) > 0);
+    } else if (currentPlateTab === 'coating') {
+        filtered = filtered.filter(p => (p.coatingCount || 0) > 0);
     }
 
     if (filtered.length === 0) {
-        plateTableBody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:2rem;">Kayıtlı kalıp bulunamadı.</td></tr>';
+        plateTableBody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:2rem;">Kayıtlı kalıp bulunamadı.</td></tr>';
         return;
     }
 
@@ -857,10 +840,10 @@ function renderPlates(searchQuery = '', statusFilter = '') {
             <td>${plate.type}</td>
             <td>${plate.inch}</td>
             <td>${plate.size}</td>
+            <td style="text-align:center;"><span style="background:#f1f5f9;color:#475569;padding:4px 8px;border-radius:6px;font-weight:600;font-size:12px;">${plate.totalCount} Adet</span></td>
             <td style="text-align:center;"><span class="status-badge status-stock">${plate.stockCount} Adet</span></td>
             <td style="text-align:center;">${plate.washingCount > 0 ? `<span style="background:#fff7ed;color:#ea580c;padding:4px 8px;border-radius:6px;font-weight:600;font-size:12px;">${plate.washingCount} Adet</span>` : '-'}</td>
             <td style="text-align:center;">${plate.coatingCount > 0 ? `<span style="background:#eff6ff;color:#2563eb;padding:4px 8px;border-radius:6px;font-weight:600;font-size:12px;">${plate.coatingCount} Adet</span>` : '-'}</td>
-            <td style="text-align:center;">${(plate.cleanCount||0) > 0 ? `<span style="background:#faf5ff;color:#9333ea;padding:4px 8px;border-radius:6px;font-weight:600;font-size:12px;">${plate.cleanCount} Adet</span>` : '-'}</td>
             <td>
                 <div class="action-btns" style="justify-content: center;">
                     <button type="button" class="btn btn-primary" style="padding: 5px 10px; font-size: 13px;" onclick="editPlate('${plate.id}')" title="Düzenle">
@@ -1408,7 +1391,8 @@ function renderDfmTable(searchQuery) {
         filtered = filtered.filter(p => p.name.toLowerCase().includes(q));
     }
 
-    if (summary) summary.textContent = `${filtered.length} kalıp listeleniyor`;
+    const totalQtyShown = filtered.reduce((s, p) => s + p.totalCount, 0);
+    if (summary) summary.textContent = `${filtered.length} kalıp varyantı · ${totalQtyShown} adet toplam kalıp`;
 
     if (filtered.length === 0) {
         if (thead) thead.innerHTML = '';
@@ -1418,25 +1402,31 @@ function renderDfmTable(searchQuery) {
 
     filtered.sort((a, b) => a.name.localeCompare(b.name, 'tr'));
 
-    // ── 'all' filtresi: her isim için chip satırı ──
+    // ── 'all' filtresi: düz tablo — her kalıp ayrı satır, baskı adı + tür birlikte ──
     if (currentDfmFilter === 'all') {
-        if (thead) thead.innerHTML = '<tr><th>Baskı Adı</th><th>Varyantlar</th></tr>';
+        if (thead) thead.innerHTML = `<tr>
+            <th>Baskı Adı</th>
+            <th>Kalıp Türü</th>
+            <th>İnç</th>
+            <th style="text-align:center;">Toplam</th>
+            <th style="text-align:center;">Stokta</th>
+            <th style="text-align:center;">Yıkamada</th>
+            <th style="text-align:center;">Kaplamada</th>
+        </tr>`;
 
-        const groups = {};
-        filtered.forEach(p => { if (!groups[p.name]) groups[p.name] = []; groups[p.name].push(p); });
+        const badge = (val, bg, color) =>
+            val > 0 ? `<span style="background:${bg};color:${color};padding:2px 8px;border-radius:5px;font-weight:600;font-size:12px;">${val}</span>` : `<span style="color:#c4cad8;">—</span>`;
 
-        tbody.innerHTML = Object.entries(groups).map(([name, plates]) => {
-            const chips = plates.map(p => {
-                const total = (p.stockCount || 0) + (p.washingCount || 0) + (p.coatingCount || 0) + (p.cleanCount || 0);
-                const parts = [];
-                if (p.stockCount > 0)          parts.push(`<span style="color:#059669;">${p.stockCount} stok</span>`);
-                if (p.washingCount > 0)        parts.push(`<span style="color:#ea580c;">${p.washingCount} yıkama</span>`);
-                if (p.coatingCount > 0)        parts.push(`<span style="color:#2563eb;">${p.coatingCount} kaplama</span>`);
-                if ((p.cleanCount || 0) > 0)   parts.push(`<span style="color:#9333ea;">${p.cleanCount} temiz</span>`);
-                return `<span class="dfm-chip">${p.type} ${p.inch} <strong>${total}</strong>${parts.length ? ' · ' + parts.join(' · ') : ''}</span>`;
-            }).join('');
-            return `<tr class="dfm-name-row"><td><strong>${name}</strong></td><td><div class="dfm-chips">${chips}</div></td></tr>`;
-        }).join('');
+        tbody.innerHTML = filtered.map(p => `
+            <tr>
+                <td><strong>${p.name}</strong></td>
+                <td><span style="background:var(--primary-light);color:var(--primary);padding:2px 8px;border-radius:5px;font-size:12px;font-weight:600;">${p.type}</span></td>
+                <td>${p.inch}</td>
+                <td style="text-align:center;">${badge(p.totalCount, '#f1f5f9', '#475569')}</td>
+                <td style="text-align:center;">${badge(p.stockCount || 0, '#ecfdf5', '#059669')}</td>
+                <td style="text-align:center;">${badge(p.washingCount || 0, '#fff7ed', '#ea580c')}</td>
+                <td style="text-align:center;">${badge(p.coatingCount || 0, '#eff6ff', '#2563eb')}</td>
+            </tr>`).join('');
         return;
     }
 
