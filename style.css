@@ -2560,6 +2560,94 @@ h4 {
 }
 .badge-clickable:hover { opacity: 0.72; }
 
+/* Add Plate Distribution Section */
+.add-dist-section {
+    margin-top: 4px;
+    padding: 14px 16px;
+    background: var(--border-light);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-medium);
+}
+
+.add-dist-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.add-dist-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-bright);
+    letter-spacing: 0.06em;
+}
+
+.add-dist-hint {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.add-dist-hint.valid   { color: #059669; font-style: normal; font-weight: 600; }
+.add-dist-hint.warning { color: #ea580c; font-style: normal; font-weight: 600; }
+
+.add-dist-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+}
+
+.add-dist-field {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    background: var(--card-bg);
+    border-radius: var(--radius-sm);
+    padding: 10px 8px 8px;
+    border: 1px solid var(--border-medium);
+}
+
+.add-dist-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    margin-bottom: 2px;
+}
+
+.add-dist-field label {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-align: center;
+    white-space: nowrap;
+}
+
+.add-dist-field input {
+    width: 100%;
+    text-align: center;
+    padding: 6px 4px;
+    border: 1px solid var(--border-medium);
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-bright);
+    background: var(--input-bg);
+    outline: none;
+    font-family: inherit;
+}
+
+.add-dist-field input:focus {
+    border-color: var(--primary);
+    background: var(--input-focus-bg);
+}
+
 /* Edit modal count section */
 .edit-counts-section {
     margin-top: 14px;

@@ -186,6 +186,13 @@ function setupEventListeners() {
     addPlateForm.addEventListener('submit', handleAddPlate);
     if (editPlateForm) editPlateForm.addEventListener('submit', handleEditPlateForm);
 
+    // Add plate distribution hint
+    const distFields = ['plate-count', 'plate-stock-count', 'plate-washing-count', 'plate-coating-count', 'plate-clean-count'];
+    distFields.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('input', updateAddDistHint);
+    });
+
     // UI Interactions
     handleImageSelection('plate-image-file', 'plate-image-preview', 'plate-image', 'plate-image-placeholder');
     handleImageSelection('edit-plate-image-file', 'edit-plate-image-preview', 'edit-plate-image', 'edit-plate-image-placeholder');
@@ -428,27 +435,54 @@ async function handleAddPlate(e) {
         return;
     }
 
+    const totalCount  = parseInt(countVal);
+    const washingCount = parseInt(document.getElementById('plate-washing-count')?.value) || 0;
+    const coatingCount = parseInt(document.getElementById('plate-coating-count')?.value) || 0;
+    const cleanCount   = parseInt(document.getElementById('plate-clean-count')?.value)   || 0;
+    const specifiedStock = parseInt(document.getElementById('plate-stock-count')?.value) || 0;
+
+    const distSum = specifiedStock + washingCount + coatingCount + cleanCount;
+
+    if (distSum > totalCount) {
+        showToast(`Dağılım toplamı (${distSum}) toplam adetten (${totalCount}) fazla olamaz!`, 'warning');
+        return;
+    }
+
+    // Dağılım girilmemişse tümü stoka at; kısmi girilmişse fark stoka gider
+    const stockCount = distSum === 0 ? totalCount : specifiedStock + (totalCount - distSum);
+
     const newPlate = {
         id: 'P' + Date.now(),
         image: document.getElementById('plate-image').value,
-        name: document.getElementById('plate-name').value,
-        type: document.getElementById('plate-type').value,
-        inch: document.getElementById('plate-inch').value,
-        size: document.getElementById('plate-size').value,
-        totalCount: parseInt(document.getElementById('plate-count').value),
-        stockCount: parseInt(document.getElementById('plate-count').value),
-        washingCount: 0,
-        coatingCount: 0,
-        cleanCount: 0,
+        name: nameVal,
+        type: typeVal,
+        inch: inchVal,
+        size: sizeVal,
+        totalCount,
+        stockCount,
+        washingCount,
+        coatingCount,
+        cleanCount,
         dateAdded: nowFormatted()
     };
 
     appState.plates.push(newPlate);
-    logActivity(`Yeni kalıp eklendi: ${newPlate.name} — ${newPlate.type}, ${newPlate.inch} (${newPlate.totalCount} adet)`, 'add');
+
+    const distParts = [];
+    if (stockCount > 0)   distParts.push(`${stockCount} stokta`);
+    if (washingCount > 0) distParts.push(`${washingCount} yıkamada`);
+    if (coatingCount > 0) distParts.push(`${coatingCount} kaplamada`);
+    if (cleanCount > 0)   distParts.push(`${cleanCount} baskısız temiz`);
+    logActivity(`Yeni kalıp eklendi: ${newPlate.name} — ${newPlate.type}, ${newPlate.inch} (${totalCount} adet${distParts.length ? ': ' + distParts.join(', ') : ''})`, 'add');
 
     saveData();
 
     addPlateForm.reset();
+    document.getElementById('plate-stock-count').value   = 0;
+    document.getElementById('plate-washing-count').value = 0;
+    document.getElementById('plate-coating-count').value = 0;
+    document.getElementById('plate-clean-count').value   = 0;
+    updateAddDistHint();
     const prevImg = document.getElementById('plate-image-preview');
     prevImg.style.display = 'none';
     prevImg.src = '';
@@ -574,6 +608,39 @@ function logActivity(message, type) {
 }
 
 // Render Functions
+function updateAddDistHint() {
+    const hint = document.getElementById('add-dist-hint');
+    if (!hint) return;
+    const total    = parseInt(document.getElementById('plate-count')?.value) || 0;
+    const stock    = parseInt(document.getElementById('plate-stock-count')?.value)   || 0;
+    const washing  = parseInt(document.getElementById('plate-washing-count')?.value) || 0;
+    const coating  = parseInt(document.getElementById('plate-coating-count')?.value) || 0;
+    const clean    = parseInt(document.getElementById('plate-clean-count')?.value)   || 0;
+    const distSum  = stock + washing + coating + clean;
+
+    if (total === 0) {
+        hint.textContent = 'Toplam adet girin';
+        hint.className = 'add-dist-hint';
+        return;
+    }
+    if (distSum > total) {
+        hint.textContent = `Fazla! ${distSum} / ${total} — ${distSum - total} adet fazla`;
+        hint.className = 'add-dist-hint warning';
+        return;
+    }
+    const remaining = total - distSum;
+    if (distSum === 0) {
+        hint.textContent = `Tümü (${total} adet) stoka eklenecek`;
+        hint.className = 'add-dist-hint valid';
+    } else if (remaining > 0) {
+        hint.textContent = `Kalan ${remaining} adet stoka eklenecek · Toplam: ${total}`;
+        hint.className = 'add-dist-hint valid';
+    } else {
+        hint.textContent = `Dağılım tam: ${total} adet`;
+        hint.className = 'add-dist-hint valid';
+    }
+}
+
 function renderAll() {
     renderDashboard();
     renderPlates();
